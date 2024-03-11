@@ -5,7 +5,9 @@ import Nat "mo:base/Nat";
 import HashMap "mo:base/HashMap";
 import Nat64 "mo:base/Nat64";
 import Iter "mo:base/Iter";
+import Array "mo:base/Array";
 import Time "mo:base/Time";
+import Buffer "mo:base/Buffer";
 import MBT "canister:graduation_token";
 import WP "canister:graduation_webpage";
 import Types "types";
@@ -21,7 +23,7 @@ actor {
         type HttpResponse = Types.HttpResponse;
 
         // The principal of the Webpage canister associated with this DAO canister (needs to be updated with the ID of your Webpage canister)
-        stable let canisterIdWebpage : Principal = Principal.fromText("aaaaa-aa");
+        stable let canisterIdWebpage : Principal = Principal.fromText("zydb5-siaaa-aaaab-qacba-cai");
         stable var manifesto = "Let's graduate!";
         stable let name = "Test Dao";
         stable var goals = ["Finish Bootcamp"];
@@ -33,6 +35,10 @@ actor {
         // Returns the manifesto of the DAO
         public query func getManifesto() : async Text {
                 return manifesto;
+        };
+        public func _setManifesto(newManifesto : Text) : async () {
+        manifesto := newManifesto;
+        return;
         };
 
         // Returns the goals of the DAO
@@ -186,11 +192,104 @@ actor {
         // Vote for the given proposal
         // Returns an error if the proposal does not exist or the member is not allowed to vote
         public shared ({ caller }) func voteProposal(proposalId : ProposalId, yesOrNo : Bool) : async Result<(), Text> {
-                return #err("Not implemented");
+        // Check if the caller is a member of the DAO
+        switch (members.get(caller)) {
+                case (null) {
+                return #err("The caller is not a member - cannot vote on proposal");
+                };
+                case (?member) {
+                // Check if the proposal exists
+                switch (proposals.get(proposalId)) {
+                        case (null) {
+                        return #err("The proposal does not exist");
+                        };
+                        case (?proposal) {
+                        // Check if the proposal is open for voting
+                        if (proposal.status != #Open) {
+                                return #err("The proposal is not open for voting");
+                        };
+                        // Check if the caller has already voted
+                        if (_hasVoted(proposal, caller)) {
+                                return #err("The caller has already voted on this proposal");
+                        };
+                        let callerBalance = await MBT.balanceOf(caller); // Correctly retrieve the caller's token balance
+                        let votingPower: Nat = switch (member.role) { // Use 'member.role' directly
+                                case (#Student) { 0 };
+                                case (#Graduate) { callerBalance };
+                                case (#Mentor) { 5 * callerBalance };
+                        };
+                        if (votingPower == 0) {
+                                return #err("Caller does not have voting rights.");
+                        };
+                        let voteEffect = if (yesOrNo) { votingPower } else { -votingPower };
+                        let newVoteScore = proposal.voteScore + voteEffect;
+                        let newStatus = 
+                                if (newVoteScore >= 100) { #Accepted }
+                                else if (newVoteScore <= -100) { #Rejected }
+                                else { proposal.status };
+
+                        var newVotes = Buffer.fromArray<Vote>(proposal.votes);
+                        newVotes.add({member = caller; votingPower= votingPower; yesOrNo = yesOrNo});
+
+                        // Determine if the proposal is executed and update the execution time
+                        var newExecuted : ?Time.Time = proposal.executed;
+                        if (newStatus == #Accepted) {
+                                await _executeProposal(proposal);
+                                newExecuted := ?Time.now();
+                        };
+
+                        let newProposal : Proposal = {
+                                id = proposal.id;
+                                content = proposal.content;
+                                creator = proposal.creator;
+                                created = proposal.created;
+                                executed = newExecuted;
+                                votes = Buffer.toArray(newVotes);
+                                voteScore = newVoteScore;
+                                status = newStatus;
+                        };
+
+                        proposals.put(proposalId, newProposal); // Update the proposal in the HashMap
+                        return #ok();
+                                };
+                        };
+                        };
+                };
         };
 
         // Returns the Principal ID of the Webpage canister associated with this DAO canister
         public query func getIdWebpage() : async Principal {
                 return canisterIdWebpage;
+        };
+        func _hasVoted(proposal : Proposal, member : Principal) : Bool {
+        return Array.find<Vote>(
+            proposal.votes,
+            func(vote : Vote) {
+                return vote.member == member;
+            },
+        ) != null;
+        };
+
+        private func _executeProposal(proposal: Proposal) : async () {
+        switch (proposal.content) {
+                case (#ChangeManifesto(newManifesto)) {
+                await _setManifesto(newManifesto);
+                let setResult = await WP.setManifesto(newManifesto);
+                switch (setResult) {
+                        case (#ok()) { /*Succes */};
+                        case (#err(errMsg)) {/*Error*/ };
+                };
+                };
+                case (#AddMentor(principal)) {
+                switch (members.get(principal)) {
+                        case (null) { /* No action required */ };
+                        case (?member) {
+                        if (member.role == #Graduate) {
+                                members.put(principal, {name = member.name; role = #Mentor;});
+                        };
+                        };
+                };
+                };
+        };
         };
 };
