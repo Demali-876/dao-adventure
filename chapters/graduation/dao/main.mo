@@ -26,7 +26,7 @@ actor {
         stable let canisterIdWebpage : Principal = Principal.fromText("zneqq-taaaa-aaaab-qaccq-cai");
         stable var manifesto = "Let's graduate!";
         stable let name = "Test Dao";
-        stable var goals = ["Finish Bootcamp"];
+        var goals = Buffer.Buffer<Text>(0);
 
         // Returns the name of the DAO
         public query func getName() : async Text {
@@ -45,10 +45,14 @@ actor {
         // For larger values, consider a different hashing approach
         return Nat32.fromNat(n);
         };
+        public func addGoal(newGoal : Text) : async () {
+        goals.add(newGoal);
+        return;
+        };
 
         // Returns the goals of the DAO
         public query func getGoals() : async [Text] {
-                return goals;
+                Buffer.toArray(goals);
         };
         // Register a new member in the DAO with the given name and principal of the caller
         // Airdrop 10 MBC tokens to the new member
@@ -63,7 +67,7 @@ actor {
         members.put(initialMentorP, initialMentor);
 
         private func mintTokensToInitialMentor() : async () {
-        let mintResult = await MBT.mint(initialMentorP, 10);
+        let mintResult = await MBT.mint(initialMentorP, 50);
         switch (mintResult) {
                 case (#ok()) {// Minting succeeded
                         };
@@ -307,6 +311,9 @@ actor {
                         };
                         };
                 };
+                };
+                case(#AddGoal(newGoal)){
+                        goals.add(newGoal);
                 };
         };
         };
