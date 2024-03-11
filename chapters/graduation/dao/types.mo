@@ -1,5 +1,7 @@
 import Principal "mo:base/Principal";
 import Time "mo:base/Time";
+import Nat64 "mo:base/Nat64";
+
 module {
 
     public type Role = {
@@ -13,7 +15,7 @@ module {
         role : Role;
     };
 
-    public type ProposalId = Nat;
+    public type ProposalId = Nat64;
 
     public type ProposalContent = {
         #ChangeManifesto : Text; // Change the manifesto to the provided text

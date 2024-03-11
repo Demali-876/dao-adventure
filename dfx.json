@@ -30,7 +30,11 @@
     },
     "graduation_dao" : {
       "main": "chapters/graduation/dao/main.mo",
-      "type": "motoko"
+      "type": "motoko",
+      "dependencies": [
+        "graduation_token",
+        "graduation_webpage"
+      ]
     },
     "graduation_token": {
       "main": "chapters/graduation/token/main.mo",

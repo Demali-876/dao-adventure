@@ -1,6 +1,7 @@
 import Types "types";
 import Result "mo:base/Result";
 import Text "mo:base/Text";
+import Principal "mo:base/Principal";
 actor Webpage {
 
     type Result<A, B> = Result.Result<A, B>;
@@ -21,7 +22,12 @@ actor Webpage {
     };
 
     // This function should only be callable by the DAO canister (no one else should be able to change the manifesto)
+    let authorizedCaller : Principal = Principal.fromText("oqjvn-fqaaa-aaaab-qab5q-cai");
     public shared ({ caller }) func setManifesto(newManifesto : Text) : async Result<(), Text> {
-        return #err("Not implemented");
+    if (caller != authorizedCaller) {
+        return #err("Unauthorized: This function can only be called by the DAO canister.");
     };
+    manifesto := newManifesto;
+    return #ok(());
+};
 };
