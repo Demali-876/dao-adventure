@@ -22,7 +22,7 @@ actor Webpage {
     };
 
     // This function should only be callable by the DAO canister (no one else should be able to change the manifesto)
-    let authorizedCaller : Principal = Principal.fromText("zwbmv-jyaaa-aaaab-qacaa-cai");
+    let authorizedCaller : Principal = Principal.fromText("zrakb-eaaaa-aaaab-qacaq-cai");
     public shared ({ caller }) func setManifesto(newManifesto : Text) : async Result<(), Text> {
     if (caller != authorizedCaller) {
         return #err("Unauthorized: This function can only be called by the DAO canister.");

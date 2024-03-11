@@ -15,7 +15,7 @@ module {
         role : Role;
     };
 
-    public type ProposalId = Nat64;
+    public type ProposalId = Nat;
 
     public type ProposalContent = {
         #ChangeManifesto : Text; // Change the manifesto to the provided text

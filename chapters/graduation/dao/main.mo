@@ -3,7 +3,7 @@ import Text "mo:base/Text";
 import Principal "mo:base/Principal";
 import Nat "mo:base/Nat";
 import HashMap "mo:base/HashMap";
-import Nat64 "mo:base/Nat64";
+import Nat32 "mo:base/Nat32";
 import Iter "mo:base/Iter";
 import Array "mo:base/Array";
 import Time "mo:base/Time";
@@ -23,7 +23,7 @@ actor {
         type HttpResponse = Types.HttpResponse;
 
         // The principal of the Webpage canister associated with this DAO canister (needs to be updated with the ID of your Webpage canister)
-        stable let canisterIdWebpage : Principal = Principal.fromText("zydb5-siaaa-aaaab-qacba-cai");
+        stable let canisterIdWebpage : Principal = Principal.fromText("zneqq-taaaa-aaaab-qaccq-cai");
         stable var manifesto = "Let's graduate!";
         stable let name = "Test Dao";
         stable var goals = ["Finish Bootcamp"];
@@ -39,6 +39,11 @@ actor {
         public func _setManifesto(newManifesto : Text) : async () {
         manifesto := newManifesto;
         return;
+        };
+        func toNat32(n: Nat) : Nat32 {
+        // Simple conversion, suitable for Nat values that fit within Nat32
+        // For larger values, consider a different hashing approach
+        return Nat32.fromNat(n);
         };
 
         // Returns the goals of the DAO
@@ -56,6 +61,19 @@ actor {
             role = #Mentor;
         };
         members.put(initialMentorP, initialMentor);
+
+        private func mintTokensToInitialMentor() : async () {
+        let mintResult = await MBT.mint(initialMentorP, 10);
+        switch (mintResult) {
+                case (#ok()) {// Minting succeeded
+                        };
+                case (#err(e)) {// Error
+                        };
+                };
+        };
+        public shared func init() : async () {
+        await mintTokensToInitialMentor();
+        };
         public shared ({ caller }) func registerMember(name : Text) : async Result<(), Text> {
         switch (members.get(caller)) {
             case (null) {
@@ -128,8 +146,8 @@ actor {
 
         // Create a new proposal and returns its id
         // Returns an error if the caller is not a mentor or doesn't own at least 1 MBC token
-        var nextProposalId : Nat64 = 0;
-        let proposals = HashMap.HashMap<ProposalId, Proposal>(0, Nat64.equal, Nat64.toNat32);
+        var nextProposalId : Nat = 0;
+        let proposals = HashMap.HashMap<ProposalId, Proposal>(0, Nat.equal, toNat32);
         public shared ({ caller }) func createProposal(content : ProposalContent) : async Result<ProposalId, Text> {
         switch (members.get(caller)) {
                 case (null) {
@@ -143,7 +161,7 @@ actor {
                                 return #err("The caller does not have enough tokens to create a proposal");
                         };
                         switch (await MBT.burn(caller, 1)) {
-                                case (#ok(_)) {
+                                case (#ok()) {
                                 let proposal: Proposal = {
                                         id = nextProposalId;
                                         content;
